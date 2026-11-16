@@ -7,10 +7,12 @@ import {
   FEVER_MULT,
   IDLE_MS,
   type Mood,
+  type Part,
   RAGE_DECAY_PER_SEC,
   RAGE_MAX,
   TOOLS,
   type ToolId,
+  WEAK_MULT,
 } from './data'
 
 const STORAGE_KEY = 'youngjoon-poke-v1'
@@ -36,7 +38,7 @@ export interface GameState {
 }
 
 type Action =
-  | { type: 'hit'; now: number }
+  | { type: 'hit'; now: number; part: Part }
   | { type: 'tick'; now: number }
   | { type: 'select'; tool: ToolId }
   | { type: 'buyTool'; tool: ToolId }
@@ -131,12 +133,24 @@ export function moodOf(s: GameState): Mood {
   return 'calm'
 }
 
+const FACE_PARTS: Part[] = ['forehead', 'cheek', 'nose', 'face']
+
+/** 지금 선택한 도구로 해당 부위를 맞혔을 때 얻는 포인트 */
+export function hitGain(s: GameState, part: Part, now: number): number {
+  const tool = TOOLS.find((t) => t.id === s.selected) ?? TOOLS[0]
+  return (
+    tool.power *
+    (now < s.feverUntil ? FEVER_MULT : 1) *
+    (tool.weak === part ? WEAK_MULT : 1)
+  )
+}
+
 function reducer(s: GameState, a: Action): GameState {
   switch (a.type) {
     case 'hit': {
       const tool = TOOLS.find((t) => t.id === s.selected) ?? TOOLS[0]
       const fever = a.now < s.feverUntil
-      const gain = tool.power * (fever ? FEVER_MULT : 1)
+      const gain = hitGain(s, a.part, a.now)
       let rage = fever ? s.rage : s.rage + tool.annoy
       let feverUntil = s.feverUntil
       let rageCount = s.rageCount
@@ -157,8 +171,15 @@ function reducer(s: GameState, a: Action): GameState {
         lastHitAt: a.now,
         lastTool: tool.id,
         hitSeq: s.hitSeq + 1,
-        blush: tool.id === 'pinch' ? Math.min(1, s.blush + 0.3) : s.blush,
-        bumpUntil: tool.id === 'flick' ? a.now + 2500 : s.bumpUntil,
+        blush:
+          tool.id === 'pinch' || a.part === 'cheek'
+            ? Math.min(1, s.blush + 0.3)
+            : s.blush,
+        bumpUntil:
+          a.part === 'forehead' ||
+          (tool.id === 'flick' && FACE_PARTS.includes(a.part))
+            ? a.now + 2500
+            : s.bumpUntil,
       }
     }
     case 'tick': {

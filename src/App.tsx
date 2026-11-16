@@ -1,26 +1,43 @@
 import {
   type KeyboardEvent,
+  lazy,
   type PointerEvent,
+  Suspense,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react'
 import './App.css'
-import { Youngjoon } from './components/Youngjoon'
 import {
   AUTOS,
   autoCost,
   FEVER_MULT,
   fmt,
   IDLE_LINES,
+  PART_LINES,
+  PART_NAME,
+  type Part,
   pick,
   RAGE_LINES,
   RAGE_MAX,
   rankFor,
   TOOLS,
+  WEAK_MULT,
 } from './game/data'
 import { playBuy, playHit, playRage } from './game/sound'
-import { autoRate, inFever, moodOf, rageLevel, useGame } from './game/useGame'
+import { frontOf, type HitInfo, isResting, type ViewState } from './game/view'
+import {
+  autoRate,
+  hitGain,
+  inFever,
+  moodOf,
+  rageLevel,
+  useGame,
+} from './game/useGame'
+
+// three.js는 덩치가 커서 따로 불러온다
+const Youngjoon3D = lazy(() => import('./components/Youngjoon3D'))
 
 interface Floater {
   id: number
@@ -28,6 +45,7 @@ interface Floater {
   y: number
   text: string
   emoji: string
+  weak: boolean
 }
 
 interface Bubble {
@@ -38,12 +56,30 @@ interface Bubble {
 
 let floaterId = 0
 
+function hasWebGL(): boolean {
+  try {
+    const c = document.createElement('canvas')
+    return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const [s, dispatch] = useGame()
   const [floaters, setFloaters] = useState<Floater[]>([])
   const [bubble, setBubble] = useState<Bubble | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
-  const stageRef = useRef<HTMLButtonElement>(null)
+  const [webgl] = useState(hasWebGL)
+  const [hitFx, setHitFx] = useState<HitInfo>({
+    seq: 0,
+    tool: 'poke',
+    part: 'face',
+    side: 0,
+  })
+  const stageRef = useRef<HTMLDivElement>(null)
+  const view = useRef<ViewState>({ yaw: 0, dragging: false, lastDragAt: 0 })
+  const drag = useRef<{ id: number; x: number; yaw: number } | null>(null)
 
   const mood = moodOf(s)
   const fever = inFever(s)
@@ -73,43 +109,88 @@ export default function App() {
 
   const bubbleVisible = bubble && bubble.until > s.now
 
-  function hit(clientX?: number, clientY?: number) {
+  function hit(part: Part, clientX?: number, clientY?: number, side = 0) {
     const rect = stageRef.current?.getBoundingClientRect()
     if (!rect) return
     const x = clientX !== undefined ? clientX - rect.left : rect.width / 2
-    const y = clientY !== undefined ? clientY - rect.top : rect.height / 2
+    const y = clientY !== undefined ? clientY - rect.top : rect.height * 0.4
     const now = Date.now()
-    const gain = tool.power * (fever ? FEVER_MULT : 1)
+    const weak = tool.weak === part
     const f: Floater = {
       id: ++floaterId,
       x: x + (Math.random() * 30 - 15),
       y,
-      text: `+${fmt(gain)}`,
+      text: `${weak ? '급소! ' : ''}+${fmt(hitGain(s, part, now))}`,
       emoji: tool.emoji,
+      weak,
     }
     setFloaters((list) => [...list.slice(-24), f])
     window.setTimeout(
       () => setFloaters((list) => list.filter((it) => it.id !== f.id)),
       900,
     )
-    // 도구를 바꿨으면 이전 도구의 대사가 남지 않도록 바로 교체
-    const switched = s.hitSeq > 0 && s.lastTool !== tool.id
-    if (!fever && (!bubbleVisible || switched || Math.random() < 0.3)) {
-      say(pick(tool.lines), 1500)
+
+    // 도구나 부위가 바뀌면 이전 대사가 남지 않도록 바로 교체
+    const changed =
+      hitFx.seq > 0 && (hitFx.tool !== tool.id || hitFx.part !== part)
+    if (!fever && (!bubbleVisible || changed || Math.random() < 0.3)) {
+      const partLines = PART_LINES[part]
+      const lines =
+        partLines && !weak && Math.random() < 0.6 ? partLines : tool.lines
+      say(pick(lines), 1500)
     }
     if (!s.muted) playHit(tool.id)
-    dispatch({ type: 'hit', now })
+    setHitFx({ seq: hitFx.seq + 1, tool: tool.id, part, side })
+    dispatch({ type: 'hit', now, part })
   }
 
-  function onPointerDown(e: PointerEvent<HTMLButtonElement>) {
+  // 3D 장면이 매 틱마다 다시 그려지지 않도록 콜백 참조를 고정한다
+  const hitRef = useRef(hit)
+  useEffect(() => {
+    hitRef.current = hit
+  })
+  const onHit = useCallback(
+    (part: Part, x: number, y: number, side: number) =>
+      hitRef.current(part, x, y, side),
+    [],
+  )
+
+  // 드래그로 좌우 회전
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return
-    hit(e.clientX, e.clientY)
+    // 정면으로 돌아와 있었다면 거기서부터 다시 돌린다
+    if (isResting(view.current)) view.current.yaw = frontOf(view.current.yaw)
+    drag.current = { id: e.pointerId, x: e.clientX, yaw: view.current.yaw }
+    view.current.lastDragAt = performance.now()
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    const dx = e.clientX - d.x
+    if (!view.current.dragging && Math.abs(dx) < 6) return
+    if (!view.current.dragging) e.currentTarget.setPointerCapture(e.pointerId)
+    view.current.dragging = true
+    view.current.yaw = d.yaw + dx * 0.012
+    view.current.lastDragAt = performance.now()
+  }
+
+  function endDrag(e: PointerEvent<HTMLDivElement>) {
+    if (drag.current?.id !== e.pointerId) return
+    drag.current = null
+    view.current.dragging = false
+    view.current.lastDragAt = performance.now()
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      if (!e.repeat) hit()
+      if (!e.repeat) hit('face')
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      if (isResting(view.current)) view.current.yaw = frontOf(view.current.yaw)
+      view.current.yaw += e.key === 'ArrowLeft' ? -0.35 : 0.35
+      view.current.lastDragAt = performance.now()
     }
   }
 
@@ -140,32 +221,47 @@ export default function App() {
 
       <main className="layout">
         <section className="stage-wrap" aria-label="이영준 일병">
-          <button
+          <div
             ref={stageRef}
-            type="button"
             className="stage"
-            data-tool={tool.id}
-            onPointerDown={onPointerDown}
+            data-last-part={hitFx.seq > 0 ? hitFx.part : undefined}
+            role="button"
+            tabIndex={0}
+            aria-label={`${tool.name}로 이영준 일병 괴롭히기. 좌우 화살표로 돌려 보기`}
             onKeyDown={onKeyDown}
-            aria-label={`${tool.name}로 이영준 일병 괴롭히기`}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
           >
+            {webgl ? (
+              <Suspense
+                fallback={<span className="stage-msg">이영준 일병 호출 중…</span>}
+              >
+                <Youngjoon3D
+                  mood={mood}
+                  blush={Math.round(s.blush * 20) / 20}
+                  bump={s.now < s.bumpUntil}
+                  fever={fever}
+                  hit={hitFx}
+                  view={view}
+                  onHit={onHit}
+                />
+              </Suspense>
+            ) : (
+              <span className="stage-msg">
+                이 브라우저는 3D(WebGL)를 지원하지 않아요.
+              </span>
+            )}
             {bubbleVisible && (
               <span key={bubble.key} className="bubble" aria-live="polite">
                 {bubble.text}
               </span>
             )}
-            <span
-              key={s.hitSeq}
-              className={`yj ${s.hitSeq > 0 && s.now - s.lastHitAt < 650 ? `anim-${s.lastTool}` : ''}`}
-            >
-              <span className={`yj-inner${mood === 'sleepy' ? ' is-sleepy' : ''}${fever ? ' is-rage' : ''}`}>
-                <Youngjoon mood={mood} blush={s.blush} bump={s.now < s.bumpUntil} />
-              </span>
-            </span>
             {floaters.map((f) => (
               <span
                 key={f.id}
-                className="floater"
+                className={`floater${f.weak ? ' is-weak' : ''}`}
                 style={{ left: f.x, top: f.y }}
                 aria-hidden="true"
               >
@@ -173,7 +269,7 @@ export default function App() {
                 {f.text}
               </span>
             ))}
-          </button>
+          </div>
 
           <div className="rage">
             <div className="rage-label">
@@ -193,8 +289,9 @@ export default function App() {
               <div className="rage-fill" style={{ width: `${(rage / RAGE_MAX) * 100}%` }} />
             </div>
             <p className="hint">
-              빠르게 괴롭히면 게이지가 차고, 꽉 차면 이영준 일병이 폭발해요.
-              폭발한 동안엔 포인트가 {FEVER_MULT}배!
+              드래그하면 이영준 일병을 돌려 볼 수 있어요. 도구마다 급소가 있어서
+              거기를 맞히면 포인트가 {WEAK_MULT}배! 게이지가 꽉 차면 폭발해서{' '}
+              {FEVER_MULT}배가 더 붙어요.
             </p>
           </div>
         </section>
@@ -228,6 +325,7 @@ export default function App() {
                     <span className="tool-meta">
                       {owned ? `+${t.power} / 클릭` : `🔒 ${fmt(t.cost)}`}
                     </span>
+                    <span className="tool-weak">급소 {PART_NAME[t.weak]}</span>
                   </button>
                 </li>
               )
