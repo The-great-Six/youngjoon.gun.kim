@@ -1,25 +1,9 @@
-export type Mood =
-  | 'calm'
-  | 'surprised'
-  | 'laugh'
-  | 'annoyed'
-  | 'hurt'
-  | 'shock'
-  | 'angry'
-  | 'sleepy'
+import type { Mood, Part, Reaction } from '../../../shared/youngjoon/types'
 
-export type ToolId = 'poke' | 'tickle' | 'pinch' | 'flick' | 'bugle'
+export type { Mood, Part }
 
-/** 3D 모델에서 클릭된 부위 */
-export type Part =
-  | 'hat'
-  | 'forehead'
-  | 'cheek'
-  | 'nose'
-  | 'ear'
-  | 'face'
-  | 'back'
-  | 'body'
+/** 장난 도구. 도구마다 영준이의 몸짓이 하나씩 대응한다. */
+export type ToolId = Reaction
 
 export const PART_NAME: Record<Part, string> = {
   hat: '모자',

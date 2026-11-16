@@ -1,5 +1,5 @@
-import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
-import { memo, type ReactNode, type RefObject, useEffect, useMemo, useRef } from 'react'
+import { type ThreeEvent, useFrame } from '@react-three/fiber'
+import { memo, type ReactNode, useEffect, useMemo, useRef } from 'react'
 import {
   CanvasTexture,
   Color,
@@ -15,17 +15,24 @@ import {
   SRGBColorSpace,
   type Vector3,
 } from 'three'
-import type { Mood, Part } from '../game/data'
-import { frontOf, type HitInfo, isResting, type ViewState } from '../game/view'
+import type { Facing, HitInfo, Mood, Part } from './types'
 
 interface Props {
   mood: Mood
-  blush: number
-  bump: boolean
-  fever: boolean
-  hit: HitInfo
-  view: RefObject<ViewState>
-  onHit: (part: Part, clientX: number, clientY: number, side: number) => void
+  /** 볼 빨개짐 (0~1) */
+  blush?: number
+  /** 이마의 딱밤 자국 */
+  bump?: boolean
+  /** 폭발: 얼굴이 달아오르고 팔을 들고 부들부들 떤다 */
+  fever?: boolean
+  /** 방금 맞은 한 방. 바뀔 때마다 리액션을 한다. */
+  hit?: HitInfo
+  /** 매 프레임 불려서 향할 각도를 알려 준다. 참조가 바뀌지 않게 넘길 것. */
+  facing: () => Facing
+  /** 평소에 머리가 포인터를 따라 볼지 */
+  followPointer?: boolean
+  /** 넘기면 클릭한 부위를 알려 준다 */
+  onHit?: (part: Part, clientX: number, clientY: number, side: number) => void
 }
 
 const HEAD_R = 0.8
@@ -453,7 +460,17 @@ function headRegion(p: Vector3): Part {
 const SKIN_COLOR = new Color(SKIN)
 const RAGE_COLOR = new Color('#f08a72')
 
-const Character = memo(function Character({ mood, blush, bump, fever, hit, view, onHit }: Props) {
+/** 3D 이영준 일병. R3F <Canvas> 안에 놓아서 쓴다. */
+export const Youngjoon = memo(function Youngjoon({
+  mood,
+  blush = 0,
+  bump = false,
+  fever = false,
+  hit,
+  facing,
+  followPointer = true,
+  onHit,
+}: Props) {
   const m = useMaterials()
   const root = useRef<Group>(null)
   const squashG = useRef<Group>(null)
@@ -483,7 +500,7 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
 
   // 맞았을 때 도구와 부위에 맞는 충격을 준다
   useEffect(() => {
-    if (hit.seq === 0) return
+    if (!hit || hit.seq === 0) return
     const s = a.current
     s.squash.v += 5
     s.lean.v += -hit.side * 4
@@ -513,7 +530,6 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
     const dt = Math.min(rawDt, 0.05)
     const t = state.clock.elapsedTime
     const s = a.current
-    const v = view.current
     const sleepy = mood === 'sleepy'
 
     step(s.squash, dt, 220, 14)
@@ -535,13 +551,11 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
       }
     }
 
-    // 손을 떼고 잠시 지나면 다시 정면을 본다
-    const resting = isResting(v)
-    const yaw = resting ? frontOf(v.yaw) : v.yaw
+    const { yaw, rate } = facing()
 
     if (root.current) {
       const r = root.current
-      r.rotation.y += (yaw - r.rotation.y) * Math.min(1, dt * (resting ? 3 : 14))
+      r.rotation.y += (yaw - r.rotation.y) * Math.min(1, dt * rate)
       r.rotation.z = s.lean.x * 0.16 + s.wiggle * Math.sin(t * 38) * 0.07
       r.position.x = s.rage * Math.sin(t * 70) * 0.025
       r.position.y = ROOT_Y + s.jump
@@ -553,7 +567,7 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
     }
     if (head.current) {
       const h = head.current
-      const calm = sleepy || fever ? 0 : 1
+      const calm = sleepy || fever || !followPointer ? 0 : 1
       s.lookX += (state.pointer.x * 0.28 * calm - s.lookX) * Math.min(1, dt * 6)
       s.lookY += (-state.pointer.y * 0.14 * calm - s.lookY) * Math.min(1, dt * 6)
       h.rotation.x = s.kick.x * 0.5 + s.lookY + (sleepy ? 0.2 + Math.sin(t * 1.6) * 0.09 : 0)
@@ -599,7 +613,7 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
   })
 
   function onDown(e: ThreeEvent<PointerEvent>) {
-    if (e.nativeEvent.button !== 0) return
+    if (!onHit || e.nativeEvent.button !== 0) return
     e.stopPropagation()
     if (!root.current || !head.current) return
     const side = Math.max(-1, Math.min(1, root.current.worldToLocal(e.point.clone()).x / HEAD_R))
@@ -614,6 +628,7 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
   }
 
   const setCursor = (e: ThreeEvent<PointerEvent>, cursor: string) => {
+    if (!onHit) return
     ;(e.nativeEvent.target as HTMLElement).style.cursor = cursor
   }
 
@@ -769,19 +784,3 @@ const Character = memo(function Character({ mood, blush, bump, fever, hit, view,
     </group>
   )
 })
-
-export default function Youngjoon3D(props: Props) {
-  return (
-    <Canvas
-      flat
-      dpr={[1, 2]}
-      camera={{ position: [0, 0.45, 7.6], fov: 31 }}
-      gl={{ antialias: true, alpha: true }}
-      style={{ position: 'absolute', inset: 0, touchAction: 'pan-y' }}
-    >
-      <hemisphereLight args={['#ffffff', '#c9c2a8', 2.1]} />
-      <directionalLight position={[2.5, 4, 5]} intensity={1.7} />
-      <Character {...props} />
-    </Canvas>
-  )
-}

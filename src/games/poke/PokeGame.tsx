@@ -26,7 +26,8 @@ import {
   WEAK_MULT,
 } from './game/data'
 import { playBuy, playHit, playRage } from './game/sound'
-import { frontOf, type HitInfo, isResting, type ViewState } from './game/view'
+import type { HitInfo } from '../../shared/youngjoon/types'
+import { frontOf, isResting, type ViewState } from './game/view'
 import {
   autoRate,
   hitGain,
@@ -37,7 +38,7 @@ import {
 } from './game/useGame'
 
 // three.js는 덩치가 커서 따로 불러온다
-const Youngjoon3D = lazy(() => import('./components/Youngjoon3D'))
+const PokeScene = lazy(() => import('./components/PokeScene'))
 
 interface Floater {
   id: number
@@ -241,7 +242,7 @@ export default function PokeGame() {
               <Suspense
                 fallback={<span className="stage-msg">이영준 일병 호출 중…</span>}
               >
-                <Youngjoon3D
+                <PokeScene
                   mood={mood}
                   blush={Math.round(s.blush * 20) / 20}
                   bump={s.now < s.bumpUntil}

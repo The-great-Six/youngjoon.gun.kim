@@ -25,7 +25,8 @@ export const GAMES: GameEntry[] = [
     slug: 'game2',
     number: 2,
     title: '영준이의 사생활',
-    desc: '영준이가 등을 돌린 사이에 벌어지는 일. 지금 기획하고 있어요.',
+    desc: '영준이가 등을 돌린 사이 관물대를 뒤져 비밀 물건을 모으는 눈치 게임. 들키면 안 돼요.',
     emoji: '🤫',
+    component: lazy(() => import('./games/snoop/SnoopGame')),
   },
 ]
