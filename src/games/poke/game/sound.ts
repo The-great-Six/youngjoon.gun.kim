@@ -1,36 +1,5 @@
+import { tone } from '../../../shared/audio'
 import type { ToolId } from './data'
-
-let ctx: AudioContext | null = null
-
-function audio(): AudioContext | null {
-  if (typeof window === 'undefined' || !('AudioContext' in window)) return null
-  ctx ??= new AudioContext()
-  if (ctx.state === 'suspended') void ctx.resume()
-  return ctx
-}
-
-function tone(
-  freq: number,
-  dur: number,
-  type: OscillatorType,
-  when = 0,
-  slideTo?: number,
-  gain = 0.12,
-) {
-  const a = audio()
-  if (!a) return
-  const t = a.currentTime + when
-  const osc = a.createOscillator()
-  const g = a.createGain()
-  osc.type = type
-  osc.frequency.setValueAtTime(freq, t)
-  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur)
-  g.gain.setValueAtTime(gain, t)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  osc.connect(g).connect(a.destination)
-  osc.start(t)
-  osc.stop(t + dur + 0.02)
-}
 
 export function playHit(tool: ToolId) {
   switch (tool) {
