@@ -1,0 +1,71 @@
+:root {
+  --bg: #f3f1e7;
+  --surface: #fffdf6;
+  --surface-2: #ebe7d6;
+  --text: #24281c;
+  --muted: #6c705c;
+  --border: #d6d1ba;
+  --accent: #4d5a36;
+  --accent-soft: #dfe5cd;
+  --danger: #d6352b;
+  --stage-a: #cfe3f2;
+  --stage-b: #e9f1dc;
+  --shadow: 0 6px 20px rgba(40, 44, 28, 0.12);
+
+  font:
+    16px/1.5 system-ui,
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
+    'Noto Sans KR',
+    sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171a12;
+    --surface: #21251a;
+    --surface-2: #2b3022;
+    --text: #ecefdf;
+    --muted: #a3a892;
+    --border: #3a4030;
+    --accent: #a9bd7c;
+    --accent-soft: #333b25;
+    --danger: #ff6b5e;
+    --stage-a: #26323c;
+    --stage-b: #2a3323;
+    --shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+h1,
+h2,
+p,
+ul,
+dl,
+dd {
+  margin: 0;
+  padding: 0;
+}
+
+ul {
+  list-style: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
