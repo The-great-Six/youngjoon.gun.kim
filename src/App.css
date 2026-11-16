@@ -69,9 +69,7 @@ h1 {
 
 .stage {
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  display: block;
   width: 100%;
   height: min(56dvh, 460px);
   min-height: 320px;
@@ -81,8 +79,8 @@ h1 {
   background: linear-gradient(180deg, var(--stage-a), var(--stage-b));
   box-shadow: var(--shadow);
   overflow: hidden;
-  cursor: pointer;
-  touch-action: manipulation;
+  cursor: grab;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -105,67 +103,15 @@ h1 {
   }
 }
 
-.yj {
-  display: block;
-  height: 92%;
-  aspect-ratio: 240 / 300;
-  transform-origin: 50% 100%;
-  pointer-events: none;
-}
-
-.yj-inner {
-  display: block;
-  height: 100%;
-  transform-origin: 50% 100%;
-  animation: breathe 3.2s ease-in-out infinite;
-}
-
-.yj-inner.is-sleepy {
-  animation: nod 2.8s ease-in-out infinite;
-}
-
-.yj-inner.is-rage {
-  animation: tremble 0.12s linear infinite;
-}
-
-.yj-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.anim-poke {
-  animation: hit-poke 0.32s ease-out;
-}
-.anim-tickle {
-  animation: hit-tickle 0.5s ease-in-out;
-}
-.anim-pinch {
-  animation: hit-pinch 0.45s ease-out;
-}
-.anim-flick {
-  animation: hit-flick 0.45s ease-out;
-}
-.anim-bugle {
-  animation: hit-bugle 0.55s ease-out;
-}
-
-.yj-sweat {
-  animation: sweat 0.6s ease-in infinite;
-}
-
-.yj-steam {
-  animation: steam 0.5s ease-out infinite;
-}
-
-.yj-zzz {
-  animation: zzz 2.4s ease-in-out infinite;
-}
-
-.yj-bump {
-  transform-origin: 120px 121px;
-  animation: bump 0.3s ease-out;
+.stage-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
 }
 
 /* 말풍선 */
@@ -212,6 +158,11 @@ h1 {
   animation: float-up 0.9s ease-out forwards;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.floater.is-weak {
+  font-size: 24px;
+  color: #ffd84d;
 }
 
 .floater-emoji {
@@ -297,7 +248,7 @@ h1 {
   align-items: center;
   gap: 2px;
   width: 100%;
-  min-height: 92px;
+  min-height: 108px;
   padding: 10px 6px;
   border: 2px solid var(--border);
   border-radius: 14px;
@@ -347,6 +298,12 @@ h1 {
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.tool-weak {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .autos {
@@ -464,34 +421,6 @@ h1 {
 
 /* ---------- 애니메이션 ---------- */
 
-@keyframes breathe {
-  50% {
-    transform: scaleY(1.015);
-  }
-}
-
-@keyframes nod {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  50% {
-    transform: rotate(4deg) translateY(4px);
-  }
-}
-
-@keyframes tremble {
-  0% {
-    transform: translate(-2px, 0);
-  }
-  50% {
-    transform: translate(2px, -1px);
-  }
-  100% {
-    transform: translate(-2px, 0);
-  }
-}
-
 @keyframes stage-shake {
   0%,
   100% {
@@ -502,94 +431,6 @@ h1 {
   }
   75% {
     transform: translate(1px, -1px);
-  }
-}
-
-@keyframes hit-poke {
-  30% {
-    transform: scale(1.06, 0.92);
-  }
-  60% {
-    transform: scale(0.97, 1.05);
-  }
-}
-
-@keyframes hit-tickle {
-  20% {
-    transform: rotate(-5deg);
-  }
-  40% {
-    transform: rotate(5deg);
-  }
-  60% {
-    transform: rotate(-4deg);
-  }
-  80% {
-    transform: rotate(3deg);
-  }
-}
-
-@keyframes hit-pinch {
-  40% {
-    transform: scale(1.14, 0.94);
-  }
-  70% {
-    transform: scale(0.96, 1.03);
-  }
-}
-
-@keyframes hit-flick {
-  25% {
-    transform: rotate(-9deg) translateY(4px);
-  }
-  60% {
-    transform: rotate(4deg);
-  }
-}
-
-@keyframes hit-bugle {
-  25% {
-    transform: translateY(-34px) scale(0.96, 1.06);
-  }
-  55% {
-    transform: translateY(0) scale(1.06, 0.92);
-  }
-  75% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes sweat {
-  to {
-    transform: translateY(14px);
-    opacity: 0;
-  }
-}
-
-@keyframes steam {
-  to {
-    transform: translateY(-12px);
-    opacity: 0;
-  }
-}
-
-@keyframes zzz {
-  0% {
-    transform: translate(0, 6px);
-    opacity: 0;
-  }
-  40% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(6px, -10px);
-    opacity: 0;
-  }
-}
-
-@keyframes bump {
-  from {
-    transform: scale(0);
   }
 }
 
@@ -608,12 +449,7 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .yj,
-  .yj-inner,
-  .is-fever .stage,
-  .yj-sweat,
-  .yj-steam,
-  .yj-zzz {
+  .is-fever .stage {
     animation: none !important;
   }
 }

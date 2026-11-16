@@ -10,6 +10,40 @@ export type Mood =
 
 export type ToolId = 'poke' | 'tickle' | 'pinch' | 'flick' | 'bugle'
 
+/** 3D 모델에서 클릭된 부위 */
+export type Part =
+  | 'hat'
+  | 'forehead'
+  | 'cheek'
+  | 'nose'
+  | 'ear'
+  | 'face'
+  | 'back'
+  | 'body'
+
+export const PART_NAME: Record<Part, string> = {
+  hat: '모자',
+  forehead: '이마',
+  cheek: '볼',
+  nose: '코',
+  ear: '귀',
+  face: '얼굴',
+  back: '뒤통수',
+  body: '옆구리',
+}
+
+/** 급소를 맞혔을 때 포인트 배수 */
+export const WEAK_MULT = 2
+
+/** 도구와 상관없이 부위 때문에 나오는 대사 */
+export const PART_LINES: Partial<Record<Part, string[]>> = {
+  hat: ['모자 삐뚤어집니다!', '전투모는 건드리지 마십시오', '각 잡아 놓은 겁니다!'],
+  nose: ['코는 누르지 마십시오', '돼지코 됩니다!'],
+  ear: ['귀는 예민합니다!', '귀 빨개집니다'],
+  back: ['뒤에서 그러시면 반칙입니다', '누, 누구십니까?!'],
+  body: ['옆구리는 반칙입니다', '거긴 간지럽습니다!'],
+}
+
 export interface Tool {
   id: ToolId
   name: string
@@ -19,6 +53,8 @@ export interface Tool {
   mood: Mood
   /** 짜증 게이지 상승량 */
   annoy: number
+  /** 이 부위를 맞히면 포인트가 WEAK_MULT배 */
+  weak: Part
   lines: string[]
 }
 
@@ -31,13 +67,14 @@ export const TOOLS: Tool[] = [
     cost: 0,
     mood: 'surprised',
     annoy: 5,
+    weak: 'body',
     lines: [
       '네? 부르셨습니까?',
       '아 깜짝이야!',
       '왜... 왜 그러십니까',
       '일병 이영준! ...아무도 없네?',
       '콕 하지 마십시오',
-      '옆구리는 반칙입니다',
+      '손가락이 매섭습니다',
     ],
   },
   {
@@ -48,12 +85,14 @@ export const TOOLS: Tool[] = [
     cost: 60,
     mood: 'laugh',
     annoy: 6,
+    weak: 'nose',
     lines: [
       '흐헤헤헿 하지 마십시오!',
       '크흡... 안 웃었습니다!',
       '간지럽습니다아아',
       '으하하 그만! 그만!',
       '웃으면 지는 겁니다... 크흡',
+      '에... 에취!',
     ],
   },
   {
@@ -64,6 +103,7 @@ export const TOOLS: Tool[] = [
     cost: 400,
     mood: 'annoyed',
     annoy: 7,
+    weak: 'cheek',
     lines: [
       '볼 늘어납니다!',
       '아야야야',
@@ -80,6 +120,7 @@ export const TOOLS: Tool[] = [
     cost: 2500,
     mood: 'hurt',
     annoy: 9,
+    weak: 'forehead',
     lines: [
       '악! 이마에 불났습니다!',
       '딱밤은 반칙입니다!!',
@@ -95,6 +136,7 @@ export const TOOLS: Tool[] = [
     cost: 15000,
     mood: 'shock',
     annoy: 12,
+    weak: 'ear',
     lines: [
       '기, 기상!! ...아직 밤입니까?',
       '귀가 멍합니다!!',
