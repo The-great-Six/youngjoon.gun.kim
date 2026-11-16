@@ -1,6 +1,13 @@
-# 이영준 일병 괴롭히기
+# 이영준 일병 게임 모음
 
-이영준 일병을 클릭으로 괴롭히는 3D 클리커 게임입니다. Vite + React + TypeScript 위에 [three.js](https://threejs.org)와 [React Three Fiber](https://r3f.docs.pmnd.rs)를 얹었습니다. 캐릭터는 모델 파일 없이 구, 원기둥, 캡슐 같은 기본 도형을 코드로 조립했고, 효과음은 Web Audio로 냅니다.
+이영준 일병과 함께하는 게임 모음입니다. 홈 화면에서 게임을 골라 시작합니다.
+
+| 번호 | 게임 | 상태 |
+| --- | --- | --- |
+| 게임 1 | 이영준 일병 괴롭히기 | 플레이 가능 |
+| 게임 2 | 영준이의 사생활 | 기획 중 |
+
+Vite + React + TypeScript 위에 [three.js](https://threejs.org)와 [React Three Fiber](https://r3f.docs.pmnd.rs)를 얹었습니다. 캐릭터는 모델 파일 없이 구, 원기둥, 캡슐 같은 기본 도형을 코드로 조립했고, 효과음은 Web Audio로 냅니다.
 
 ## 실행
 
@@ -11,7 +18,7 @@ npm run build    # 타입 체크 + 프로덕션 빌드
 npm run preview  # 빌드 결과 미리보기
 ```
 
-## 게임 방법
+## 게임 1: 이영준 일병 괴롭히기
 
 - 이영준 일병을 클릭(또는 탭, Enter/Space)하면 **장난 포인트**가 쌓입니다.
 - 드래그(또는 좌우 화살표)로 돌려 볼 수 있고, 손을 떼면 잠시 뒤 정면으로 돌아옵니다.
@@ -27,14 +34,18 @@ npm run preview  # 빌드 결과 미리보기
 
 ```
 src/
-├── App.tsx                    # 화면 구성, 클릭 처리, 드래그 회전
-├── App.css                    # 레이아웃, 말풍선, 떠오르는 점수
-├── components/Youngjoon3D.tsx # 3D 이영준 일병 (도형 조립, 표정 8종, 리액션 애니메이션, 부위 판정)
-└── game/
-    ├── data.ts                # 도구, 급소, 자동 장난, 대사, 밸런스 수치
-    ├── useGame.ts             # 게임 상태(reducer), 저장/불러오기
-    ├── view.ts                # 회전 상태와 한 방 정보 타입
-    └── sound.ts               # Web Audio 효과음
+├── App.tsx                        # 해시 주소(#/game1)로 홈과 게임을 오간다
+├── games.ts                       # 게임 목록. 새 게임은 여기에 한 줄 추가
+├── pages/Home.tsx                 # 홈 화면 (게임 카드)
+└── games/poke/                    # 게임 1
+    ├── PokeGame.tsx               # 화면 구성, 클릭 처리, 드래그 회전
+    ├── PokeGame.css               # 레이아웃, 말풍선, 떠오르는 점수
+    ├── components/Youngjoon3D.tsx # 3D 이영준 일병 (도형 조립, 표정 8종, 리액션, 부위 판정)
+    └── game/
+        ├── data.ts                # 도구, 급소, 자동 장난, 대사, 밸런스 수치
+        ├── useGame.ts             # 게임 상태(reducer), 저장/불러오기
+        ├── view.ts                # 회전 상태와 한 방 정보 타입
+        └── sound.ts               # Web Audio 효과음
 ```
 
-밸런스나 대사, 급소를 바꾸려면 `src/game/data.ts`만 고치면 됩니다. three.js는 덩치가 커서 3D 장면만 따로 지연 로딩합니다.
+게임 1의 밸런스나 대사, 급소를 바꾸려면 `src/games/poke/game/data.ts`만 고치면 됩니다. 게임마다 따로 지연 로딩하므로 홈 화면은 가볍게 뜹니다.
